@@ -36,3 +36,20 @@
 - 通用 secret 模式: 无命中 ✅
 - cfg.json/params.json/.env 追踪检查: 未追踪 (仅上游 voicejson/f5ttscfg.json 白名单) ✅
 - 推送方式: fast-forward (49e8276..6017c95), 未 force, 上游历史完整 ✅
+
+---
+
+# Task 2 对齐验收表 (2026-09-19)
+
+任务源: task py.md 第2节。
+
+| 任务要求 | 交付 | 证据 | 判定 |
+|---------|------|------|------|
+| 2.1 完整流程: 字幕识别→提取→角色/音色识别→音色分离→音色克隆→去除原音→字幕翻译→译文配音(按角色)→字幕压制 | 全链路打通并两集实测 | docs/verification.md「Task2 两集端到端」; 第01集克隆全流程 EP1=0, 第02集西语多音色全流程 EP2=0 | ✅ |
+| 2.1.1 skill 增强, 适合海外短剧, 中/英原文→英西葡法德印尼意 7 语种 | drama-stt-pipeline 重写(7语种矩阵+海外短剧译制要点), drama agent 增强(称谓/文化词/句长), assign_voices 7语种音色池 | .ai-dev/skills/, agents/drama.md; 14个Edge音色逐名验实; pyvideotrans 7语种原生支持核验 | ✅ |
+| 2.2 免费模型借助本地 ollama, 按内存实际评估 (查 HF/GitHub) | 32GB M4 评估: qwen2.5:7b-instruct-q4_K_M (4.7GB) 首选, 14B 备选; ASR/分离/TTS 不迁 ollama 的理由; 渠道9接入+中→西16条全集实测 | .ai-dev/skills/drama-ollama-local; outputs/ollama_sts01/ | ✅ |
+| 2.3 两视频完成整流程校验 | 第01集(克隆/en) + 第02集(多音色/es), 物理指标+目检+OCR+debug日志多证 | outputs/final_ep1_clone/, outputs/final_ep2_es/ | ✅ |
+
+遗留 (继承 task1):
+- G1-剩余: GLM-ASR/GLM-OCR 需标准产品充值 (Coding Plan 只含 chat); F5 克隆 id/pt 无模型→Edge 回退 (skill 已写明)
+- 克隆音高漂移 (F5 零样本特性): 质量中等, 追求高保真可后续接 CosyVoice/GPT-SoVITS
