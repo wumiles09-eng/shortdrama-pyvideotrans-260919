@@ -11,5 +11,5 @@
 | T7 | 人声分离 + 多音色配音 (Edge-TTS) | @dev | ✅ 2026-09-19 | vocal/instrument.wav; 基频 205/122Hz 证多音色 |
 | T8 | GLM-ASR-2512 识别接入 | @ops | ✅ 配置就绪 ⏳ 余额 | 渠道16, 同 zhipu_key |
 | T9 | aidevteam 配置 | @tl | ✅ 2026-09-19 | 5 agents + 4 skills 软链可调 |
-| T10 | vtv 全流程多音色终验 | @dev | ⏳ vtv02 运行中 | 译制视频多音色听感 |
-| T11 | git 终提 + 密钥门禁 + GitHub 推送 | @ops | ⏳ | secret-gate 全 PASS |
+| T10 | vtv 全流程多音色终验 | @dev | ✅ 2026-09-19 | vtv02 完成; debug 日志证 line_roles 16行×4音色装载 |
+| T11 | git 终提 + 密钥门禁 + GitHub 推送 | @ops | ✅ 2026-09-19 | secret-gate 全 PASS; 推送 49e8276..372a125 fast-forward |

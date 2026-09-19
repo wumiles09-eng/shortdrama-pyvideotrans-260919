@@ -16,7 +16,8 @@
 | 人声分离 | vtv --is_separate | ✅ vocal.wav + instrument.wav 产出 | outputs/vtv01/ |
 | 多音色配音 (tts) | assign_voices + cli.py tts (补丁: params.line_roles→dubbing_role) | ✅ 基频客观验证: line1 Aria女声 F0≈205Hz / line15 Brian男声 F0≈122Hz, 按行切换生效 | outputs/tts01/第01集.clean.en.wav |
 | vtv 全流程 (单默认音色) | stt+diariz+译+配+合成 | ✅ 87s→88s 译制视频, 英文硬字幕目检清晰 (视觉模型复核 "In this life, I will make your family pay in blood") | outputs/vtv01/第01集.mp4 |
-| vtv 全流程 (多音色) | cli.py vtv + line_roles 补丁 | ⏳ 运行中 | outputs/vtv02/ |
+| vtv 全流程 (多音色) | cli.py vtv + line_roles 补丁 | ✅ debug 日志证 line_roles 16行×4音色装载; 译制视频+纯配音轨产出 (视频轨基频受BGM混音干扰, 机制由纯音轨 tts01 的 F0 205/122Hz 证明) | outputs/vtv02/ |
+| GitHub 发布 | secret-gate (key特征/通用模式/敏感文件/全历史) → push | ✅ 4项全 PASS (历史曾含key前8位已重建清除); 推送 49e8276..372a125 fast-forward | github.com/wumiles09-eng/shortdrama-pyvideotrans-260919 |
 | ZAI key 有效性 | curl 双端点 | ⚠️ 认证通过, 1113 余额不足 → 付费渠道 (渠道7翻译/渠道16 ASR) 配置已就绪待充值 | — |
 
 ## 已知问题
