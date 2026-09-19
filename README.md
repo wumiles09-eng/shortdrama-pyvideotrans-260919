@@ -65,14 +65,14 @@ $NOPROXY HF_ENDPOINT=https://hf-mirror.com uv run --no-sync cli.py --task vtv \
 
 | 环节 | 免费/开源 (已验证) | 付费 (已接入, 待充值) |
 |------|-------------------|----------------------|
-| 字幕识别 OCR | RapidOCR 本地 (drama-tools) | GLM-OCR (api.z.ai) |
+| 字幕识别 OCR | RapidOCR 本地 (drama-tools) | GLM-OCR `--engine glm` (layout_parsing, base64/URL) |
 | 语音识别 ASR | faster-whisper / FunASR 本地 | 智谱 GLM-ASR-2512 (渠道16, zhipu_key) |
-| 字幕翻译 | Google (渠道0) | 智谱 glm-5.3-flash (渠道7, zhipu_key) |
+| 字幕翻译 | Google (渠道0, 本机被反爬) / **微软 (渠道1, 实测可用)** | 智谱 glm-5.3-flash / glm-5.3-flashx (渠道7, 双端点可切) |
 | 多音色配音 | Edge-TTS (渠道0) | — (可扩 Azure/OpenAI) |
 | 说话人分离 | 内置 built / ali_CAM (ModelScope) | pyannote (需 HF token) |
 | 人声/背景分离 | uvr 本地 (--is_separate) | — |
 
-付费 key 配置: 在 GUI (sp.py) 翻译设置-智谱AI 中填入 z.ai key。注意 key 必须有余额。
+付费 key/端点: `drama-tools/setup_glm.py --probe` 一键探活双端点 (cn=bigmodel.cn / intl=api.z.ai) 并写入配置。当前 key 有效但余额不足 (HTTP 429 + code 1113), 充值后所有付费渠道即用。
 
 ## 上游改动 (fork diff, 提交在 git 历史)
 
@@ -89,6 +89,9 @@ $NOPROXY HF_ENDPOINT=https://hf-mirror.com uv run --no-sync cli.py --task vtv \
 4. `cli.py`: tts/vtv 任务装载 params.json 的 `line_roles{行号:音色}` 实现无界面多角色配音
    — 原因: 上游多角色配音仅 GUI 接线 (fn_peiyinrole → 内存 dubbing_role/line_roles), CLI 无入口;
    补丁: tts_fun → app_cfg.dubbing_role + is_multi_role; vtv_fun → app_cfg.line_roles。
+5. `_zhipuai.py` + `constants.py`: 智谱渠道端点可配置 (`zhipu_base_url`, 默认 bigmodel.cn 兼容上游,
+   可切 api.z.ai) ; Zhipuai_Model 常量补 glm-5.3-flash / glm-5.3-flashx
+   — 原因: 同一 key 双端点认证均通过, 充值侧决定可用端点; 上游模型列表缺失本任务要用的模型。
 
 环境补丁 (重建 venv 后需重做, 见 .ai-dev/agents/ops.md):
 - soundfile 软链: `mkdir -p .venv/lib/python3.10/site-packages/_soundfile_data && ln -sf /opt/homebrew/lib/libsndfile.dylib .venv/lib/python3.10/site-packages/_soundfile_data/libsndfile.dylib`

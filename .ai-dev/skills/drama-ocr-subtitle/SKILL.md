@@ -3,7 +3,16 @@ name: drama-ocr-subtitle
 description: 从竖屏短剧视频提取内嵌硬字幕为 SRT (OpenCV+RapidOCR 免费本地)。当用户要求提取视频硬字幕、OCR字幕、生成srt时使用。
 ---
 
-# 短剧硬字幕 OCR 提取
+# 短剧硬字幕 OCR 提取 (双引擎)
+
+## 引擎选择
+
+| 引擎 | 命令 | 适用 |
+|------|------|------|
+| local (默认) | `uv run ocr_srt.py --input X.mp4` | 免费, 快, 90s剧~2min; 字符级噪声~2% |
+| glm | `uv run ocr_srt.py --input X.mp4 --engine glm` | 付费 GLM-OCR 高精度; 余额不足时明确报错; 区域标定仍本地(省API) |
+
+免费→付费策略: 先 local 全量出稿 → 对噪声行/艺术字帧用 glm 重识别对照 (充值后可用)。
 
 ## 何时使用
 

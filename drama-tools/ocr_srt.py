@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-ocr_srt.py — 短剧硬字幕 OCR 提取器 (免费开源方案: OpenCV + RapidOCR)
+ocr_srt.py — 短剧硬字幕 OCR 提取器 (双引擎)
+
+引擎:
+  local (默认, 免费开源): OpenCV 采样 + RapidOCR 本地识别
+  glm   (付费, 高精度):   OpenCV 采样 + GLM-OCR layout_parsing API
+                          (key 从 Obsidian api.md 读取, 绝不硬编码; 区域标定仍用本地 RapidOCR)
 
 从带内嵌(硬)字幕的短剧视频中,周期采样帧 -> 裁剪字幕区域 -> OCR 识别 ->
 相邻帧文本去重合并 -> 输出带时间轴的 .srt 字幕文件。
 
 用法:
   uv run ocr_srt.py --input 第01集.mp4 --output 第01集.ocr.srt
+  uv run ocr_srt.py --input in.mp4 --engine glm --region 0.55:0.75   # GLM-OCR 高精度
   uv run ocr_srt.py --input in.mp4 --region 0.72:0.94 --fps 5 --min-conf 0.6
 
 输出:
@@ -15,13 +21,71 @@ ocr_srt.py — 短剧硬字幕 OCR 提取器 (免费开源方案: OpenCV + Rapid
 """
 
 import argparse
+import base64
 import difflib
 import json
+import re
 import sys
+import time
 from pathlib import Path
 
 import cv2
 import numpy as np
+
+API_DOC = Path.home() / "Documents/Obsidian Vault/project/api/api.md"
+GLM_LAYOUT_URL = "https://api.z.ai/api/paas/v4/layout_parsing"
+
+
+def read_glm_key() -> str:
+    text = API_DOC.read_text(encoding="utf-8")
+    m = re.search(r"key[:：]\s*([0-9a-f]{32}\.[A-Za-z0-9]+)", text)
+    if not m:
+        raise SystemExit("[glm] 未能从 api.md 解析 key")
+    return m.group(1)
+
+
+class GlmOcr:
+    """GLM-OCR layout_parsing 封装, 接口与 RapidOCR 兼容: img -> [(box, text, conf), ...]"""
+
+    def __init__(self):
+        import urllib.error
+        import urllib.request
+        self._urllib = urllib.request
+        self._urlerror = urllib.error
+        self.key = read_glm_key()
+
+    def __call__(self, img_bgr: np.ndarray):
+        ok, buf = cv2.imencode(".png", img_bgr)
+        if not ok:
+            return [], None
+        b64 = base64.b64encode(buf).decode()
+        # base64 前缀格式文档未明示: 先纯 base64, 格式报错则退 data URL 重试
+        for file_val in (b64, f"data:image/png;base64,{b64}"):
+            body = json.dumps({"model": "glm-ocr", "file": file_val}).encode()
+            req = self._urllib.Request(GLM_LAYOUT_URL, data=body, headers={
+                "Authorization": f"Bearer {self.key}",
+                "Content-Type": "application/json"})
+            try:
+                with self._urllib.urlopen(req, timeout=60) as r:
+                    data = json.loads(r.read().decode())
+            except self._urlerror.HTTPError as e:
+                err = e.read().decode("utf-8", "ignore")
+                if "1113" in err:
+                    raise SystemExit("[glm] 余额不足 (1113), 请先充值再使用 --engine glm")
+                if e.code in (400, 422) and "base64" not in file_val:
+                    continue  # 换 data URL 前缀重试
+                print(f"[glm] HTTP {e.code}: {err[:160]}", file=sys.stderr)
+                return [], None
+            items = []
+            for page in data.get("layout_details") or []:
+                for it in page:
+                    if it.get("label") == "text" and it.get("content"):
+                        x1, y1, x2, y2 = it["bbox_2d"]
+                        h, w = img_bgr.shape[:2]
+                        box = [[x1*w, y1*h], [x2*w, y1*h], [x2*w, y2*h], [x1*w, y2*h]]
+                        items.append((box, it["content"].strip(), 0.99))
+            return items, None
+        return [], None
 
 
 def parse_args():
@@ -29,6 +93,8 @@ def parse_args():
     p.add_argument("--input", required=True, help="输入视频路径")
     p.add_argument("--output", default=None, help="输出 SRT 路径 (默认: 输入名.ocr.srt)")
     p.add_argument("--fps", type=float, default=4.0, help="采样帧率 (默认 4, 即每 0.25s 一帧)")
+    p.add_argument("--engine", choices=["local", "glm"], default="local",
+                   help="OCR 引擎: local=RapidOCR 免费 (默认), glm=GLM-OCR 付费高精度")
     p.add_argument("--region", default="auto",
                    help="字幕区域, 高度比例 start:end 或 auto 自动标定 (默认 auto)")
     p.add_argument("--min-conf", type=float, default=0.55, help="OCR 置信度阈值 (默认 0.55)")
@@ -216,10 +282,12 @@ def main():
     out = args.output or str(inp.with_suffix(".ocr.srt"))
 
     from rapidocr_onnxruntime import RapidOCR
-    ocr = RapidOCR()
+    local_ocr = RapidOCR()
+    ocr = GlmOcr() if args.engine == "glm" else local_ocr
 
     if str(args.region).lower() == "auto":
-        y0, y1 = probe_subtitle_band(str(inp), ocr)
+        # 区域标定始终用本地 RapidOCR (省 API 调用); glm 引擎仅识别字幕带帧
+        y0, y1 = probe_subtitle_band(str(inp), local_ocr)
     else:
         y0, y1 = (float(x) for x in args.region.split(":"))
     print(f"[ocr_srt] {inp.name} region={args.region} fps={args.fps}", file=sys.stderr)

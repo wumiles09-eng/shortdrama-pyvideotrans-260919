@@ -54,3 +54,20 @@
 
 结论: 6/6 输出帧 + 2/2 源帧全部对齐 — 源画面→OCR/ASR→翻译→输出视频硬字幕全链路内容一致。
 另注: 原视频自带角色角标(张桂芬/保姆/小兰), 可作为说话人分离精度的先验(角色名标注与 spk 对齐是后续增强方向)。
+
+## GLM 付费链路配套升级 (2026-09-19 第四轮 — 源: 小说/国内小说/基础信息.md)
+
+新输入: 基础信息.md 提供同 key 的更大模型表 (含 GLM-5.3-FlashX) 与 z.ai 官方文档源。
+key 现状: 双端点 (bigmodel.cn / api.z.ai) 认证通过, **HTTP 429 + code 1113 余额不足** (新发现: 状态码是 429 而非 200, 判定要同时看 body)。
+
+过程问题即时修复 (不等后续):
+| # | 问题 | 修复 |
+|---|------|------|
+| P1 | 上游智谱翻译渠道硬编码 bigmodel.cn, 国际站充值会打不通 | _zhipuai.py 读 params.zhipu_base_url (默认 cn 保持兼容, 可切 intl) |
+| P2 | 上游模型常量缺 glm-5.3-flash/flashx (GUI 选不到) | constants.py Zhipuai_Model 补全 |
+| P3 | GLM-OCR 高精度路径未实现 | ocr_srt.py --engine glm (layout_parsing, base64→dataURL 自动回退, 1113 明确报错); 冒烟: 认证通+余额报错符合预期 |
+| P4 | setup_glm.py 不支持端点/模型选择 | 重写: --endpoint cn/intl --model flash/flashx/5.3 --probe 双端探活 |
+| P5 | 代码 bug: urllib.error 未导入 (GLM 引擎冒烟发现) | 已修, 冒烟通过 |
+| P6 | skills 未覆盖新事实 | drama-glm-channels 全面增强 (双端点/模型全表/429+1113 排障/OCR要点); drama-ocr-subtitle 增双引擎表 |
+
+回归: local OCR 引擎 45 条不变; glm 引擎报错路径正确。
