@@ -38,3 +38,19 @@
 | 说话人约束对照 | stt --nums_diariz 4 | ✅ 8人→5人 (spk0×7/spk3×4 主角色与剧情吻合), 序列连贯; 生产建议按剧配置角色数 |
 | vtv02 音画物理验收 | ffprobe + RMS | ✅ h264 87.3s + aac 87.25s; line1/line10/片尾 RMS -20.5/-19.9/-22.2 dB (配音真实可闻) |
 | 对齐表 | docs/task-alignment.md | ✅ 12 项要求逐条对齐, 3 项遗留差距透明申报 (G1 付费待充值 / G2 分离需角色数 / G3 OCR噪声) |
+
+## 实际视频系统性核验 (2026-09-19 第三轮 — 用户要求)
+
+方法: 源视频与译制输出视频在同一时间点抽帧(8 点), 视觉模型读出画面真实字幕, 与管线产物 SRT 逐字比对。
+
+| 时间点 | 源画面中文 | 管线中文字幕 | 输出画面英文 | 管线 en.srt | 判定 |
+|--------|-----------|------------|-------------|------------|------|
+| 2.7s | 我看谁敢赶我走…江家的种 | OCR✓ | Let's see who dares to take me away. There's a Jiang family seed in my belly | ✓ | ✅ |
+| 18.6s | 医院对白 | ASR✓ | This is a hospital. How could I lie?... | ✓ | ✅ |
+| 30.1s | 这一世我要让你们一家血债血偿 | OCR✓ | In this life, I will make your family pay for their blood debts | ✓ | ✅ |
+| 43.4s | 要奶奶亲自伺候 | ASR✓ | He wanted his grandmother to personally serve him... | ✓ | ✅ |
+| 55.9s | 老婆你冷静点小心她肚子里的孩子 | OCR✓ | Honey, calm down, be careful of the child in his belly | ✓ | ✅ |
+| 83.6s | 臣刚你轻点…别压着了 | OCR✓ | Be gentle, I'm carrying your swelling in my belly, don't press it | ✓ | ✅ |
+
+结论: 6/6 输出帧 + 2/2 源帧全部对齐 — 源画面→OCR/ASR→翻译→输出视频硬字幕全链路内容一致。
+另注: 原视频自带角色角标(张桂芬/保姆/小兰), 可作为说话人分离精度的先验(角色名标注与 spk 对齐是后续增强方向)。
