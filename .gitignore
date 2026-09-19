@@ -1,65 +1,33 @@
-*.log
-*.srt
-*.7z
-*.spec
-*.ui
-*.bak
-*.bat
-*.aac
-*.pyi
-*.mp4
+# ===== 密钥/本地配置 (绝不入库) =====
+pyvideotrans/videotrans/cfg.json
+pyvideotrans/videotrans/params.json
+**/cfg.json
+**/params.json
+.env
+.env.*
+*.key
+api.md
 
+# ===== Python =====
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
 
+# ===== 模型/媒体大文件 =====
+pyvideotrans/models/
+pyvideotrans/hf-downloads/
+pyvideotrans/output/
+pyvideotrans/_video_out/
+pyvideotrans/tmp/
+outputs/*.mp4
+outputs/*.wav
+outputs/*.m4a
+*.ckpt
+*.onnx
+*.pt
+*.bin
 
-AGENTS.md
-edgetts.txt
-.agree.txt
-test.py
-ffmpeg/ffmpeg.exe
-ffmpeg/ffprobe.exe
-ffmpeg/ffplay.exe
-ffmpeg/ytwin32.exe
-videotrans/ass.json
-videotrans/codec.json
-videotrans/cfg.json
-videotrans/params.json
-videotrans/languages.json
-videotrans/webui_state.json
-videotrans/glossary.txt
-
-deps/
-g2pW/
-output/
-whisper-cpp/
-
-
-tmp
-images
-logs
-models
-dev
-chatterbox
-
-
-.venv
-venv
-dist
-source
-build
-pretrained_models
-runtime
-
-__pycache__
-.idea
-.pytest_cache
-.mimocode
-.ruff_cache
-
-# Arquivos do sistema
+# ===== OS/IDE =====
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
+*.log

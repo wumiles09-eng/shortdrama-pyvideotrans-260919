@@ -217,6 +217,7 @@ def stt_fun(params: dict) -> None:
 
 def tts_fun(params: dict) -> None:
     """Execute text-to-speech task."""
+    from videotrans.configure.config import app_cfg
     from videotrans.task.dubbing import DubbingSrt
     from videotrans.task.taskcfg import TaskCfgTTS
 
@@ -224,6 +225,14 @@ def tts_fun(params: dict) -> None:
     print(tr('process_file', params.get('name')))
     try:
         trk = DubbingSrt(cfg=TaskCfgTTS(**params), out_ext='wav')
+        # 短剧多角色配音: params.json 的 line_roles {行号:音色} → dubbing_role
+        from videotrans.configure.config import params as _params
+        line_roles = _params.get('line_roles') or {}
+        if line_roles:
+            trk.is_multi_role = True
+            app_cfg.dubbing_role = {int(k): v for k, v in line_roles.items()}
+            print(f"[multi-role] line_roles enabled: {len(line_roles)} lines, "
+                  f"{len(set(line_roles.values()))} voices")
         trk.prepare()
         trk.dubbing()
         trk.align()
@@ -263,6 +272,13 @@ def vtv_fun(params: dict) -> None:
     print(tr('process_file', params.get('name')))
     try:
         trk = TransCreate(cfg=TaskCfgVTT(**params))
+        # 短剧多角色配音: params.json 的 line_roles {行号:音色} → app_cfg.line_roles
+        from videotrans.configure.config import params as _params
+        line_roles = _params.get('line_roles') or {}
+        if line_roles and params.get('enable_diariz'):
+            app_cfg.line_roles = dict(line_roles)
+            print(f"[multi-role] line_roles enabled: {len(line_roles)} lines, "
+                  f"{len(set(line_roles.values()))} voices")
         trk.prepare()
         trk.recogn()
         trk.diariz()

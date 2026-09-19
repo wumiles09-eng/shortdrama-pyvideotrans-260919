@@ -1,0 +1,31 @@
+# 验证记录 (docs/verification.md)
+
+证据表由 @qa 维护。格式: 日期 | 能力 | 命令/方式 | 结果 | 产物
+
+## 2026-09-19
+
+| 能力 | 方式 | 结果 | 产物 |
+|------|------|------|------|
+| 部署 pyvideotrans | uv sync (清华镜像, darwin 排除 pynini/WeTextProcessing/chatterbox, torch 走镜像) | ✅ Python 3.10.19 + torch 2.7.1, CLI 可用 | pyvideotrans/.venv (3.2G) |
+| libsndfile 修复 | brew libsndfile 软链到 venv _soundfile_data | ✅ soundfile 读写正常 (说话人分离子进程依赖) | — |
+| OCR 硬字幕提取 (第01集) | `drama-tools/ocr_srt.py` auto 区域标定 | ✅ 42 条, 时间轴准确, 抽查命中 | outputs/第01集.ocr.srt (+debug.json) |
+| OCR 硬字幕提取 (第02集) | 同上 | ✅ 45 条 | outputs/第02集.ocr.srt |
+| ASR 转录 (第01集) | cli.py stt, faster-whisper small (免费) | ✅ 16 条, 中文识别准确 | outputs/stt01/第01集.srt |
+| 说话人分离 | --enable_diariz, built→ali_CAM | ✅ speaker.json 16 行; built 10 说话人 / ali_CAM 8 (主聚类 spk0×5, spk5×4); 剧情实际约4-5人, 过度分割已知局限, 可用 --nums_diariz N 约束 | outputs/stt01/speaker.json |
+| 字幕翻译 (免费) | cli.py sts --translate_type 1 微软 (免key) | ✅ 质量佳 "Let's see who dares to kick me out"; Google 渠道0 被 302 反爬拦截不可用 | outputs/sts01/第01集.ocr.en.srt, stt01/第01集.clean.en.srt |
+| 人声分离 | vtv --is_separate | ✅ vocal.wav + instrument.wav 产出 | outputs/vtv01/ |
+| 多音色配音 (tts) | assign_voices + cli.py tts (补丁: params.line_roles→dubbing_role) | ✅ 基频客观验证: line1 Aria女声 F0≈205Hz / line15 Brian男声 F0≈122Hz, 按行切换生效 | outputs/tts01/第01集.clean.en.wav |
+| vtv 全流程 (单默认音色) | stt+diariz+译+配+合成 | ✅ 87s→88s 译制视频, 英文硬字幕目检清晰 (视觉模型复核 "In this life, I will make your family pay in blood") | outputs/vtv01/第01集.mp4 |
+| vtv 全流程 (多音色) | cli.py vtv + line_roles 补丁 | ⏳ 运行中 | outputs/vtv02/ |
+| ZAI key 有效性 | curl 双端点 | ⚠️ 认证通过, 1113 余额不足 → 付费渠道 (渠道7翻译/渠道16 ASR) 配置已就绪待充值 | — |
+
+## 已知问题
+
+1. `pynini@2.1.6` 无 macOS arm64 wheel → 已条件排除; 影响 MOSS-TTS/孔子TTS 文本正则化 (未用)
+2. `chatterbox-tts` 的 resemble-perth 是 GitHub 直链源码包, 本机拉取反复 early EOF → 已条件排除 (声音克隆渠道不可用, 未用)
+3. litellm 1.95.0 无 macOS wheel → maturin/cargo 源码编译一次 (~15min, 已入缓存)
+4. soundfile wheel 未捆绑 libsndfile → brew 版软链修复 (uv sync 后需重建, 见 ops agent)
+5. 直连 PyPI/GitHub 不稳; 本地 7897 代理对部分域慢/挂死 → 统一策略: PyPI 清华镜像 / HF hf-mirror + 解代理直连 / GitHub ghproxy
+6. Google 翻译渠道 (0) 被反爬 302 → 免费翻译用微软渠道 (1)
+7. OCR 存在少量字符噪声 (NR/一库上/胎台气), 可用 rephrase 或人工修
+8. 说话人分离过度分割 (90s 检出 8-10 人 vs 实际 4-5 人); ali_CAM 优于 built; 已知角色数时 --nums_diariz N 约束

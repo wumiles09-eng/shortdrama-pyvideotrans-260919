@@ -253,15 +253,15 @@ dependencies = [
     "unicode-rbnf>=2.4.0",
     "sentence-stream>=1.3.0",
     "google-cloud-storage>=3.12.0",
-    "pynini",
-    "WeTextProcessing",
+    "pynini ; sys_platform != 'darwin'",
+    "WeTextProcessing ; sys_platform != 'darwin'",
     "transformers4576==4.57.6.4",
     "omnivoice",
     "qwen-tts-pvt",
     "f5-tts",
     "gradio>=6.8.0",
     "inflect>=7.5.0",
-    "chatterbox-tts>=0.1.7",
+    "chatterbox-tts>=0.1.7 ; sys_platform != 'darwin'",
     "transformers>=5.13.1",
     "huggingface-hub>=1.10.0",
     "pythonnet",
@@ -293,7 +293,7 @@ override-dependencies = [
 	"safetensors==0.8.0",
 	"f5-tts==1.1.20",
 	"huggingface-hub==1.10.0",
-	"chatterbox-tts==0.1.7",
+	"chatterbox-tts==0.1.7 ; sys_platform != 'darwin'",
 	"google-cloud-storage==3.12.0",
 	"torchcodec ; sys_platform == 'never'",
 	"pythonnet ; sys_platform == 'win32'",
@@ -318,11 +318,9 @@ explicit = true
 [tool.uv.sources]
 torch = [
     { index = "pytorch-cu128", marker = "sys_platform == 'win32' or sys_platform == 'linux'" },
-    { index = "pytorch-cpu", marker = "sys_platform == 'darwin'" },  # darwin 为 macOS
 ]
 torchaudio = [
     { index = "pytorch-cu128", marker = "sys_platform == 'win32' or sys_platform == 'linux'" },
-    { index = "pytorch-cpu", marker = "sys_platform == 'darwin'" },
 ]
 # 仅针对 Windows (win32) 平台指定从 URL 下载 wheel 文件
 # https://github.com/OpenMOSS/MOSS-TTS-Nano/issues/6
@@ -333,6 +331,6 @@ pynini = [
 ]
 
 
-chatterbox-tts = { url = "https://github.com/resemble-ai/chatterbox/archive/refs/heads/master.tar.gz" }
+chatterbox-tts = { url = "https://github.com/resemble-ai/chatterbox/archive/refs/heads/master.tar.gz", marker = "sys_platform != 'darwin'" }
 
 
