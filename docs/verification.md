@@ -71,3 +71,19 @@ key 现状: 双端点 (bigmodel.cn / api.z.ai) 认证通过, **HTTP 429 + code 1
 | P6 | skills 未覆盖新事实 | drama-glm-channels 全面增强 (双端点/模型全表/429+1113 排障/OCR要点); drama-ocr-subtitle 增双引擎表 |
 
 回归: local OCR 引擎 45 条不变; glm 引擎报错路径正确。
+
+## GLM 付费链路打通 (2026-09-19 第五轮 — 用户指正后突破)
+
+突破: 用户确认 key 有额度并指向 docs.z.ai → 定位到 **"glme key" = GLM Coding Plan key**,
+走专用端点 `https://api.z.ai/api/coding/paas/v4/` (通用 paas/v4 对 Plan key 一律 1113)。
+
+| 项 | 结果 |
+|----|------|
+| coding 端点 chat/completions (glm-5.3-flash) | ✅ HTTP 200 真实响应 |
+| **付费翻译实测** (sts --translate_type 7, 16 条全集) | ✅ outputs/glm_sts01/第01集.clean.en.srt |
+| 翻译质量对比 (vs 微软免费) | GLM 更优: "Who's kicking me out? I'm carrying a Jiang heir" (简洁短剧味) / "哎呦→Ow!" 语境准; 微软第16条理解错误 ("I'm carrying you in my belly") |
+| coding 端点 ASR (audio/transcriptions) | ✗ 1113 — Coding Plan 不含, 需标准产品充值 |
+| coding 端点 OCR (layout_parsing) | ✗ 1113 — 同上 |
+
+配置: setup_glm.py 增 `--endpoint coding`; params.json 已设 zhipu_base_url=coding 端点, zhipu_max_token=8192。
+G1 状态更新: **翻译链路已解除并实测通过; ASR/OCR 仍待标准产品充值 (Plan 外)**。

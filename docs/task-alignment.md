@@ -25,7 +25,7 @@
 
 | # | 差距 | 原因 | 解除条件 |
 |---|------|------|---------|
-| G1 | 付费模型 (glm-5.3-flash 翻译 / GLM-ASR-2512 识别) 未实测 | API 返回 1113 余额不足 (外部阻塞, 非配置问题; 双端点认证均通过) | ZAI 账户充值后: `cd drama-tools && uv run setup_glm.py --probe` → 翻译 `--translate_type 7` / 识别 `--recogn_type 16` 即用 |
+| G1(部分解除) | ~~翻译未实测~~ 已通: glme key=Coding Plan → coding 端点, 16 条全集实测质量优于免费; ASR/OCR 不在 Plan 内仍 1113 | 标准产品 (bigmodel.cn/z.ai paas) 充值后: ASR `--recogn_type 16`、OCR `--engine glm` 即用 |
 | G2 | 说话人分离需人工给角色数提示效果最佳 | 90s 强情绪短剧对无约束聚类不友好 (通用局限) | 已缓解: nums_diariz 约束后 5 人与剧情吻合; 建议生产流程中按剧配置角色数 |
 | G3 | OCR 字符级噪声 (NR/一库上/胎台气 等少量) | 竖屏小字 + 艺术字体, RapidOCR 固有误差 | 可接 `--rephrase 1` (LLM 断句纠错, 需翻译渠道 key) 或人工抽查; 付费 GLM-OCR 可作高精度对照 (待 G1) |
 

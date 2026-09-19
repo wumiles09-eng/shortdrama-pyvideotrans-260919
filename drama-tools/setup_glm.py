@@ -30,6 +30,7 @@ PARAMS = pathlib.Path(__file__).resolve().parent.parent / "pyvideotrans/videotra
 ENDPOINTS = {
     "cn": "https://open.bigmodel.cn/api/paas/v4/",
     "intl": "https://api.z.ai/api/paas/v4/",
+    "coding": "https://api.z.ai/api/coding/paas/v4/",  # GLM Coding Plan (glme key) 专用, chat 可用
 }
 
 
@@ -74,8 +75,9 @@ def main():
         for name, url in ENDPOINTS.items():
             code, body = probe(key, url, args.model)
             tag = "可用 ✓" if code == 200 else (
-                "key有效但余额不足 (1113)" if "1113" in body else "异常")
-            print(f"[glm] {name:4s} {url} -> HTTP {code} [{tag}]")
+                "key有效但余额/资源包不足 (1113)" if "1113" in body else "异常")
+            print(f"[glm] {name:6s} {url} -> HTTP {code} [{tag}]")
+        print("[glm] 注意: glme(Coding Plan) key 仅 chat 在 coding 端点可用; ASR/OCR 需标准产品充值")
 
     data = json.loads(PARAMS.read_text(encoding="utf-8")) if PARAMS.exists() else {}
     data["zhipu_key"] = key

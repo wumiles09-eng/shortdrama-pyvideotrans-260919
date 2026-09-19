@@ -17,14 +17,18 @@ description: 配置与排障智谱 GLM 付费渠道 (glm-5.3-flash/flashx 翻译
 **GLM-5.3-Flash / GLM-5.3-FlashX / GLM-5.3 / GLM-ASR-2512 / GLM-OCR**
 官方文档: https://docs.z.ai/api-reference/introduction (OCR: docs.z.ai/api-reference/tools/layout-parsing.md)
 
-## 双端点事实 (关键)
+## 三端点事实 (关键, 2026-09-19 实测打通)
 
-同一 key 在两个端点**认证均通过**, 余额不足 (1113) 两端同时报:
-- cn 国内站: `https://open.bigmodel.cn/api/paas/v4/` (pyvideotrans 默认)
-- intl 国际站: `https://api.z.ai/api/paas/v4/` (z.ai 文档站)
+| 端点 | URL | 状态 |
+|------|-----|------|
+| **coding** | `https://api.z.ai/api/coding/paas/v4/` | ✅ **chat 可用** (GLM Coding Plan / "glme key" 专用) |
+| cn | `https://open.bigmodel.cn/api/paas/v4/` | 1113 (标准产品无余额) |
+| intl | `https://api.z.ai/api/paas/v4/` | 1113 (同上) |
 
-**充值侧决定可用端点** → 上游已补丁支持 `params.json` 的 `zhipu_base_url` 切换
-(若只在国际站充值, 必须切 intl, 否则打不通)。
+**关键认知**: 文件里 "zai glme key" 是 **GLM Coding Plan key** — 在通用端点全部 1113,
+必须走 **coding 端点**;Plan 只覆盖 chat (翻译✓), **ASR/OCR 不在 Plan 内** (仍 1113, 需标准产品充值)。
+鉴权同为 Bearer。模型 glm-5.3-flash 为思考模型 (response 含 reasoning_content),
+翻译批任务建议 zhipu_max_token≥8192 且 zhipu_thinking=false。
 
 ## 一键配置
 
@@ -41,7 +45,8 @@ uv run setup_glm.py --endpoint intl --model glm-5.3-flashx --probe   # 国际站
 | HTTP 429 + body code 1113 | key 有效但余额不足 (状态码是 429, 别误判为限流) | 充值; 不要改代码 |
 | HTTP 429 无 1113 | 真限流 (短时多次探活会触发) | 等 30s 重试 |
 | 翻译空结果 | zhipu_model 名不对 | 必须全小写 `glm-5.3-flash`; flashx 是 `glm-5.3-flashx` |
-| 打通intl仍报1113 | 账户在另一端点充值 | `setup_glm.py --endpoint <另一端> --probe` |
+| 打通intl仍报1113 | key 是 Coding Plan (glme) 类型 | `setup_glm.py --endpoint coding --probe`; Plan 只含 chat, ASR/OCR 需标准侧充值 |
+| chat 返回空 content | glm-5.3-flash 思考模型耗尽 max_tokens | zhipu_max_token 提到 ≥8192, zhipu_thinking=false |
 | GLM-ASR 无时间轴 | API 返回纯文本 | pyvideotrans 内部切音频分段, 正常 |
 | GLM-OCR base64 格式错 | 文档未明示前缀 | ocr_srt.py 已内置 纯b64→dataURL 自动回退 |
 | urllib `module has no attribute error` | 少 import urllib.error | 已修 (drama-tools) |

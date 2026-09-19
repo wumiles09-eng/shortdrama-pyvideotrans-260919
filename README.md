@@ -67,12 +67,12 @@ $NOPROXY HF_ENDPOINT=https://hf-mirror.com uv run --no-sync cli.py --task vtv \
 |------|-------------------|----------------------|
 | 字幕识别 OCR | RapidOCR 本地 (drama-tools) | GLM-OCR `--engine glm` (layout_parsing, base64/URL) |
 | 语音识别 ASR | faster-whisper / FunASR 本地 | 智谱 GLM-ASR-2512 (渠道16, zhipu_key) |
-| 字幕翻译 | Google (渠道0, 本机被反爬) / **微软 (渠道1, 实测可用)** | 智谱 glm-5.3-flash / glm-5.3-flashx (渠道7, 双端点可切) |
+| 字幕翻译 | Google (渠道0, 本机被反爬) / 微软 (渠道1, 可用) | **智谱 glm-5.3-flash (渠道7) ✅已实测**, 质量优于免费 (coding 端点) |
 | 多音色配音 | Edge-TTS (渠道0) | — (可扩 Azure/OpenAI) |
 | 说话人分离 | 内置 built / ali_CAM (ModelScope) | pyannote (需 HF token) |
 | 人声/背景分离 | uvr 本地 (--is_separate) | — |
 
-付费 key/端点: `drama-tools/setup_glm.py --probe` 一键探活双端点 (cn=bigmodel.cn / intl=api.z.ai) 并写入配置。当前 key 有效但余额不足 (HTTP 429 + code 1113), 充值后所有付费渠道即用。
+付费 key/端点: `drama-tools/setup_glm.py --probe` 一键探活三端点 (cn / intl / **coding**)。当前 key 为 GLM Coding Plan 类型 ("glme key"): **翻译已打通并实测**; ASR/OCR 不在 Plan 内, 需标准产品充值。
 
 ## 上游改动 (fork diff, 提交在 git 历史)
 
