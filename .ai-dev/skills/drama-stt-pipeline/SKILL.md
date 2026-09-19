@@ -1,62 +1,89 @@
 ---
 name: drama-stt-pipeline
-description: 短剧 ASR 转录+说话人分离+多音色配音全流程 (faster-whisper/FunASR + Edge-TTS 免费本地)。当用户要转录短剧、分离角色、按角色配音、翻译短剧视频时使用。
+description: 海外短剧翻译全流程 (识别→提取→角色/音色识别→音色分离→音色克隆→去原音→翻译→按角色配音→字幕压制)。支持中/英原文 → 英西葡法德印尼意 7 语种译文。当用户要端到端译制短剧或执行任一环节时使用。
 ---
 
-# 短剧转录→分离→配音 全流程
+# 海外短剧翻译全流程 (7 语种)
 
-## 环境
+## 语种矩阵 (核心速查)
+
+**原文**: 中文(zh-cn) / 英语(en) —— ASR 由 faster-whisper 自动覆盖
+**译文**: 英语 en · 西语 es · 葡语 pt · 法语 fr · 德语 de · 印尼语 id · 意语 it (pyvideotrans 全部原生支持)
+
+| 环节 | 首选(已实测) | 免费回退 | 克隆方案 |
+|------|-------------|---------|---------|
+| ASR 识别 | faster-whisper small (本地) | FunASR(纯中文更优) | — |
+| 翻译-付费 | GLM glm-5.3-flash (渠道7, coding端点, 7语种全) | — | — |
+| 翻译-免费 | 微软 (渠道1, 7语种全) | 本地 ollama qwen2.5 (渠道9, 见 drama-ollama-local) | — |
+| 配音-多音色 | Edge-TTS (渠道0, 7语种全音色) | — | — |
+| 配音-**音色克隆** | F5-TTS (渠道2) | — | **en/es/fr/de/it/zh 可克隆; id/pt 无克隆模型 → 回退 Edge-TTS** |
+
+### Edge-TTS 各语色对 (按角色男女交替)
+
+| 语种 | 女声 | 男声 |
+|------|------|------|
+| en | en-US-AriaNeural / JennyNeural | en-US-BrianNeural / GuyNeural |
+| es | es-ES-ElviraNeural | es-ES-AlvaroNeural |
+| pt | pt-BR-FranciscaNeural | pt-BR-AntonioNeural |
+| fr | fr-FR-DeniseNeural | fr-FR-HenriNeural |
+| de | de-DE-KatjaNeural | de-DE-ConradNeural |
+| id | id-ID-GadisNeural | id-ID-ArdiNeural |
+| it | it-IT-ElsaNeural | it-IT-DiegoNeural |
+
+## 全流程命令 (端到端)
 
 ```bash
 cd "/Users/mac/Documents/project/py videos/pyvideotrans"
-export HF_ENDPOINT=https://hf-mirror.com   # 模型下载走镜像
+NOPROXY="env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy -u ALL_PROXY -u all_proxy"
+
+# ── 一条命令全流程 (以 中→西语 + 音色分离 + 按角色配音 + 硬字幕压制为例) ──
+# 前置: drama-tools/assign_voices.py 已写好目标语种音色的 line_roles
+$NOPROXY HF_ENDPOINT=https://hf-mirror.com uv run --no-sync cli.py --task vtv \
+  --name 第01集.mp4 --source_language_code zh-cn --target_language_code es \
+  --model_name small --enable_diariz --nums_diariz 4 \
+  --translate_type 7 \
+  --is_separate \
+  --voice_role "es-ES-AlvaroNeural" \
+  --subtitle_type 1
 ```
 
-## 流程
+环节与参数对照 (vtv 内部自动串起):
+1. **字幕识别+提取**: 内置 ASR → srt; 硬字幕剧先用 `drama-ocr-subtitle` 无声提取对照
+2. **角色/音色识别**: `--enable_diariz --nums_diariz N` (N=剧情角色数, 实测约束后 8→5 人与剧情吻合)
+3. **音色分离**: `--is_separate` → vocal.wav(人声)+instrument.wav(背景乐)
+4. **去原音**: vtv 配音模式天然替换原音轨; `--is_separate` 时背景乐保留、人声被译制配音替换 (embed_bgm 控制)
+5. **字幕翻译**: `--translate_type 7`=GLM / `1`=微软免费 / `9`=本地ollama
+6. **按角色配音**: params.json `line_roles` (由 assign_voices.py 写入, cli 补丁自动装载)
+7. **字幕压制**: `--subtitle_type` 1=硬字幕(译文) 3=硬字幕双语 2/4=软字幕
 
-### 1) STT + 说话人分离 (免费)
+## 音色克隆 (F5-TTS, 原声克隆)
 
 ```bash
-uv run cli.py --task stt --name "<视频>" --detect_language zh-cn \
-  --model_name small --enable_diariz --nums_diariz -1
-# 产物: output 目录 zh-cn.srt + speaker.json (每行说话人 id)
+# voice_role=clone + tts_type 2 (F5-TTS): 每行用原视频对应人声段作参考音频克隆
+$NOPROXY HF_ENDPOINT=https://hf-mirror.com uv run --no-sync cli.py --task vtv \
+  --name 第01集.mp4 --source_language_code zh-cn --target_language_code en \
+  --enable_diariz --nums_diariz 4 --is_separate \
+  --tts_type 2 --voice_role "clone" --subtitle_type 1
 ```
 
-- 中文识别模型选 `small` 起步; 精度不足升 `medium`/`large-v3` (M 芯 CPU 可跑, 慢)
-- 说话人分离默认 built (onnx, ModelScope 回退下载); 中文剧建议 settings 里 speaker_type=ali_CAM
+- 首次运行自动从 HF (走 hf-mirror) 拉克隆模型 (~1.4GB/语种) + vocos 声码器
+- **语种覆盖: en/es/fr/de/it/zh 有模型; id/pt 无 → 报错时改用 Edge-TTS 音色方案**
+- 克隆质量取决于参考人声纯净度: 务必配 `--is_separate` (用分离后的 vocal 作参考)
+- line_roles 中也可对部分角色写 "clone" 部分角色写 Edge 音色 (混合模式)
 
-### 2) OCR 与 ASR 互补
+## 海外短剧译制要点 (@drama 协作)
 
-硬字幕剧同时跑 `drama-ocr-subtitle` 技能, 以 OCR 为基准 (短剧字幕=台词原文), ASR 补时间轴与无字幕段。
+1. **称呼语统一**: 中文亲属称谓(奶奶/儿媳/叔叔)在西语葡语等无直接对应 → 按剧情关系译 (Señora/Sogra...) 全集一致
+2. **文化词**: 系统/境界/逆袭等网文词 → 目标语惯用表达; 金手指类术语建 glossary.md
+3. **语气保真**: 短剧对白夸张冲突强, 避免 GLM/翻译渠道输出书面腔 (渠道自带的译制 prompt 已处理, 抽查即可)
+4. **字幕长度**: 德语/西语句长普遍长于中文 30%+, 断句上限调大 (settings other_len)
+5. **配音节奏**: 目标语长句配音超时时加 `--voice_autorate` (自动加速对齐) 而非删词
 
-### 3) 翻译 (免费 Google→付费 glm-5.3-flash)
+## 验收清单
 
-```bash
-uv run cli.py --task sts --name "<srt>" --translate_type 0 --target_language_code en  # 免费
-uv run cli.py --task sts --name "<srt>" --translate_type 7 --target_language_code en  # 智谱, 需 key+余额
-```
-
-### 4) 按角色多音色配音 (Edge-TTS 免费)
-
-```bash
-cd ../drama-tools
-uv run assign_voices.py --speaker-json <spk.json> \
-  --params-json ../pyvideotrans/videotrans/params.json \
-  --voices zh-CN-YunxiNeural,zh-CN-XiaoxiaoNeural   # 按说话人顺序
-cd ../pyvideotrans
-uv run cli.py --task vtv --name "<视频>" --source_language_code zh-cn \
-  --target_language_code zh-cn --enable_diariz --is_separate --subtitle_type 2
-```
-
-- `line_roles` 按行号分配音色, assign_voices 自动生成
-- `--is_separate` 人声/背景分离: 译制配音不压背景乐
-
-### 5) 音色匹配建议 (@drama)
-
-年长男 Yunjian / 年轻男 Yunxi / 女主 Xiaoxiao / 少女 Xiaoyi / 旁白 Yunyang
-
-## 验收
-
-- srt 条数与时长覆盖>95% 对白
-- speaker.json 说话人数与剧情主要角色数一致 (短剧通常 2-4)
-- 配音产物每行对应音频文件存在且时长≤字幕时长*1.3
+- [ ] srt 覆盖>90% 对白时长, 抽 5 条与画面字幕一致
+- [ ] speaker.json 角色数 = 剧情设定; 约束参数已用
+- [ ] vocal/instrument.wav 存在且听感分离
+- [ ] 译制视频: 原音已替换 / 背景乐保留 / 双语或译文硬字幕清晰
+- [ ] 多角色配音: 不同说话人音色可辨 (基频抽检或听感)
+- [ ] 克隆模式: 音色与原声相似度抽听

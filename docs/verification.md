@@ -87,3 +87,37 @@ key 现状: 双端点 (bigmodel.cn / api.z.ai) 认证通过, **HTTP 429 + code 1
 
 配置: setup_glm.py 增 `--endpoint coding`; params.json 已设 zhipu_base_url=coding 端点, zhipu_max_token=8192。
 G1 状态更新: **翻译链路已解除并实测通过; ASR/OCR 仍待标准产品充值 (Plan 外)**。
+
+## Task2 推进 (2026-09-19)
+
+| 项 | 方式 | 结果 |
+|----|------|------|
+| 7 语种支持核验 | pyvideotrans LANGNAME_DICT | ✅ en/es/pt/fr/de/id/it 全原生支持 |
+| Edge-TTS 音色核验 | list_voices 逐名校验 | ✅ 14 个目标音色全部存在 (7语种男女对); es45/en47/fr13/de10/pt5/it4/id2 |
+| F5-TTS 克隆语种覆盖 | f5ttscfg.json | ✅ en/es/fr/de/it/zh 有克隆模型; id/pt 无 → 回退 Edge-TTS |
+| ollama 评估 (32GB M4) | 内存规格+经验值 | ✅ 选 qwen2.5:7b-instruct-q4_K_M (4.7GB); 14B 可跑备选 |
+| ollama 翻译冒烟 | curl 直调 | ✅ 西语译文质量好 |
+| **ollama 渠道9 全集实测** | sts --translate_type 9 (中→西 16条) | ✅ outputs/ollama_sts01/ 质量良好 |
+| F5 模型预下载 | hf-mirror | ✅ SWivid/F5-TTS base (1.35G) + vocos (2.3G models 总量) |
+| **F5 克隆冒烟** | vtv 25s 片段 (tts_type2+clone+GLM+分离+压制) | ✅ CLONE2=0; 首败原因=line_roles 残留覆盖 clone (已修复: 克隆模式先清 line_roles) |
+| 克隆客观验证 | 基频对比 | 去原音生效 (line1 中文260.7Hz→英文克隆384.3Hz 音轨已换, 女声保持); BGM 保留 (line3 同 83.6Hz); 克隆音高较原声漂移 (F5 零样本已知特性) |
+
+## Task2 两集端到端全流程校验 (2026-09-19)
+
+| 集 | 流程配置 | 结果 | 产物 |
+|----|---------|------|------|
+| 第01集 | ASR(small)+说话人(约束4)+人声分离+**GLM翻译**+**F5音色克隆配音**+去原音+硬字幕压制 (→en) | ✅ EP1=0 | outputs/final_ep1_clone/ |
+| 第02集 | ASR(small)+说话人(约束4,5人spk0×6/spk4×6主导)+人声分离+**GLM翻译**+**西语多音色(4音色池)**+去原音+硬字幕压制 (→es) | ✅ EP2=0 | outputs/final_ep2_es/ |
+
+核验证据:
+- 第01集: 双流 87.3s; RMS -16.6/-17.3/-24.7dB; 30s 帧英文硬字幕与 en.srt 逐字一致; 克隆客观证(原声中文260.7Hz→克隆英文384.3Hz, 音轨已换女声保持; line3 BGM 83.6Hz 两轨一致=背景保留)
+- 第02集: line_roles 18行×4西语音色 debug 装载证; RMS -15~-20dB; es.srt 西语译文质量佳; 压制字幕=西语(日志 target_sub + RapidOCR 双证)
+- 教训记录: 拉丁语种字幕目检时视觉模型会"自动翻译"致误判 → 用 RapidOCR 确定性复核
+
+## Task2 交付物汇总
+- drama-stt-pipeline skill: 重写为 7 语种全流程 (语种矩阵/克隆/去原音/压制/海外短剧要点)
+- drama-ollama-local skill: 新建 (32GB M4 实测评估 + 渠道9接入)
+- drama agent: 海外短剧 7 语种译制要点增强
+- assign_voices.py: 7 语种自动音色池 (男女交替)
+- ollama qwen2.5:7b: 渠道9 中→西 16 条全集实测通过 (免费本地翻译档)
+- F5-TTS 克隆: 模型下载+冒烟+全集流程打通 (en/es/fr/de/it/zh; id/pt 回退 Edge)
