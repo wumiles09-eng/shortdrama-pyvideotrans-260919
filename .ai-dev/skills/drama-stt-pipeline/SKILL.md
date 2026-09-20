@@ -39,7 +39,7 @@ NOPROXY="env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy -u ALL_PR
 # ── 一条命令全流程 (以 中→西语 + 音色分离 + 按角色配音 + 硬字幕压制为例) ──
 # 前置: drama-tools/assign_voices.py 已写好目标语种音色的 line_roles
 # ⚠️ 电平/同步三参数 (2026-09-20 实测修复, 缺一会出现"有字幕没配音"听感/音画不同步):
-#    --voice_autorate  配音自动加速塞回字幕时间槽 (否则长句溢出到下一句)
+#    --align_sub_audio  字幕时间轴贴合配音实际位置 (译制片标准; 优于 voice_autorate, 见 verification 修复轮2)
 #    --volume +15%     配音增益
 #    --backaudio-volume 0.35  背景乐降量 (上游默认0.8 会淹没配音; 0.3-0.4 推荐)
 $NOPROXY HF_ENDPOINT=https://hf-mirror.com uv run --no-sync cli.py --task vtv \
