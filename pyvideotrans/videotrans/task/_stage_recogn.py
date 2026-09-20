@@ -214,9 +214,37 @@ class RecognMixin:
                 logger.exception(f'克隆语音前分离出 44.1k 的原始音频失败',exc_info=True)
 
         logger.debug(f'语音克隆模式下，所用参考音频为:{vocal}')
+
+        # 短剧短句行窗口常 <3s, 而零样本克隆(CosyVoice 3s极速复刻/F5)参考音频建议 ≥3s:
+        # 切参考时向相邻静音区扩展 (前≤1500ms/后≤500ms), 不越过相邻行边界, 目标 ≥3s
+        def _expanded_range(idx, item):
+            try:
+                start_ms = int(item['start_time']); end_ms = int(item['end_time'])
+                prev_end = int(self.queue_tts[idx-1]['end_time']) if idx > 0 else 0
+                nxt_start = int(self.queue_tts[idx+1]['start_time']) if idx+1 < len(self.queue_tts) else end_ms + 3000
+                new_start = max(prev_end, start_ms - 1500, end_ms - 3000)
+                new_end = min(nxt_start, end_ms + 500, new_start + 4500)
+                if new_end - new_start < end_ms - start_ms:  # 扩展失败则退回原窗口
+                    new_start, new_end = start_ms, end_ms
+                return new_start, new_end
+            except Exception:
+                return None
+
+        def _ms_to_ts(ms):
+            h, r = divmod(max(0, ms), 3600000); m, r = divmod(r, 60000); s, ss2 = divmod(r, 1000)
+            return f"{h:02d}:{m:02d}:{s:02d},{ss2:03d}"
+
         def _cutaudio_from_vocal(it):
             try:
                 logger.debug(f"裁切对应片段为参考音频：{it['startraw']}->{it['endraw']}\n当前{it=}")
+                rng = it.get('_ref_range')
+                if rng:
+                    cut_from_audio(
+                        audio_file=vocal,
+                        ss=_ms_to_ts(rng[0]), to=_ms_to_ts(rng[1]),
+                        out_file=it['ref_wav']
+                    )
+                    return
                 cut_from_audio(
                     audio_file=vocal,
                     ss=it['startraw'],
@@ -228,8 +256,12 @@ class RecognMixin:
 
         all_task = []
         with ThreadPoolExecutor(max_workers=min(8, len(self.queue_tts), os.cpu_count())) as pool:
-            for item in self.queue_tts:
+            for _idx, item in enumerate(self.queue_tts):
                 if item.get('ref_wav'):
+                    _rng = _expanded_range(_idx, item)
+                    if _rng:
+                        item['_ref_range'] = _rng
+                        logger.debug(f"克隆参考扩展: line{item.get('line')} {item['startraw']}~{item['endraw']} -> {_rng[0]}~{_rng[1]}ms")
                     all_task.append(pool.submit(_cutaudio_from_vocal, item))
             if len(all_task) > 0:
                 _ = [i.result() for i in all_task]

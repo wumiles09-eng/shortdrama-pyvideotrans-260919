@@ -217,3 +217,18 @@ G1 状态更新: **翻译链路已解除并实测通过; ASR/OCR 仍待标准产
 | 克隆贴合 | **4/5 抽样性别一致**, 基频贴合 260/340,316/329,250/276 | 漂移严重 (克隆音高+384 vs 261) |
 
 已知限制: 行级参考切分(_create_ref_from_vocal)在 <3s 短句行上参考质量不稳定 → 个别行音色偏移 (line21 例, harness 层待修项, 非模型问题)。
+
+## P1-b/P2 收口 (2026-09-20 终轮)
+
+| 项 | 结论 |
+|----|------|
+| P1-b SenseVoiceSmall | ✅ 实测(FunASR 渠道 --model_name SenseVoiceSmall 零改动): 错字≈FireRed、断句同样合并 → **ASR 档定 FireRedASR(渠道5, 错字最少); 断句正解仍是 OCR 源**; SenseVoice 情绪标签在此 CLI 路径未输出 |
+| 补丁11 克隆参考窗口扩展 | ✅ 验证通过: 贴合 8/9(89%, v1 抽样 4/5), 可闻 42/42, line41/42 基频与原声完全一致(312/313) |
+| P2-a pyannote | ⛔ 阻塞: gated 模型必须 HF token, cfg hf_token 空、api.md 无 → 需用户提供后 `cfg.json 填 hf_token + speaker_type=pyannote` 即用 |
+| P2-b Kokoro | ⏸ 降级: kokoro_server.py 已写(OpenAI 兼容), 但上游 kokoro pip 包请求 model.safetensors 而模型仓库实际为 kokoro-v1_0.pth → 下载 404 挂死; 等上游对齐后 uv run kokoro_server.py 即用; Edge-TTS 在线档已满足 |
+
+## 最终交付物一览 (第01集, 按推荐度)
+1. **outputs/cosy_ep1_v2** — CosyVoice2 克隆(补丁11): 可闻42/42, 贴合8/9, 错位0 ⭐推荐
+2. outputs/final3_ep1 — Edge 性别识别多音色: 可闻38/42, 字幕0偏差
+3. outputs/fix5_ep1 — OCR源单声版(历史里程碑)
+第02集: outputs/fix2_ep2_es (西语多音色+align)
