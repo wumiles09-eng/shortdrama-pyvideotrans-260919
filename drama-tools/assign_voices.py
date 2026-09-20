@@ -1,48 +1,96 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-assign_voices.py — 按说话人分配多音色 (Edge-TTS, 7 目标语种)
+assign_voices.py — 按说话人分配多音色 (7 语种; 支持原声性别自动识别)
 
 读取 pyvideotrans 说话人分离结果 speaker.json (每行字幕的说话人 id 列表),
-将每个说话人映射到一个 Edge-TTS 音色, 生成 line_roles {行号: 音色} 写入
-pyvideotrans/videotrans/params.json, 之后 vtv/tts 配音阶段即按行使用不同音色。
+将每个说话人映射到 Edge-TTS 音色, 生成 line_roles {行号: 音色} 写入 params.json。
 
-用法:
-  # 指定语种, 男女交替自动池
-  uv run assign_voices.py --speaker-json spk.json --params-json ../pyvideotrans/videotrans/params.json --lang es
-  # 显式映射 / 逗号音色序列 (同旧版)
-  uv run assign_voices.py --speaker-json spk.json --params-json ... \
-      --voices zh-CN-YunyangNeural,zh-CN-XiaoxiaoNeural
-  uv run assign_voices.py --speaker-json spk.json --params-json ... \
-      --map "说话人0=zh-CN-YunxiNeural,说话人1=zh-CN-XiaoyiNeural"
+三种分配方式 (优先级 --map > --voices > --lang > --lang+--vocal):
+  --lang es                      按语种池顺序 (交替)
+  --lang es --vocal vocal.wav    【推荐】用分离出的原声计算每个说话人基频,
+                                 女(>170Hz)→女声 男(≤170Hz)→男声 (真正的"音色识别")
+  --voices "a,b,c"               显式序列
+  --map "spk0=x,spk1=y"          显式映射
 """
 
 import argparse
 import json
+import re
+import subprocess
 from pathlib import Path
 
-# Edge-TTS 音色池 (2026-09-19 逐个 list_voices 校验存在); 每语种 [女,男,女,男...] 延伸
+import numpy as np
+
+# Edge-TTS 音色池 (2026-09-19 逐名校验); 每语种 {f:[女...], m:[男...]}
 VOICE_POOLS = {
-    "en": ["en-US-AriaNeural", "en-US-BrianNeural", "en-US-JennyNeural", "en-US-GuyNeural"],
-    "es": ["es-ES-ElviraNeural", "es-ES-AlvaroNeural", "es-MX-DaliaNeural", "es-MX-JorgeNeural"],
-    "pt": ["pt-BR-FranciscaNeural", "pt-BR-AntonioNeural", "pt-PT-FernandaNeural", "pt-PT-DuarteNeural"],
-    "fr": ["fr-FR-DeniseNeural", "fr-FR-HenriNeural", "fr-CA-SylvieNeural", "fr-CA-AntoineNeural"],
-    "de": ["de-DE-KatjaNeural", "de-DE-ConradNeural", "de-DE-AmalaNeural", "de-DE-KillianNeural"],
-    "id": ["id-ID-GadisNeural", "id-ID-ArdiNeural"],  # 印尼语仅 2 个音色, 多角色循环使用
-    "it": ["it-IT-ElsaNeural", "it-IT-DiegoNeural", "it-IT-FabiolaNeural"],
-    "zh": ["zh-CN-XiaoxiaoNeural", "zh-CN-YunxiNeural", "zh-CN-XiaoyiNeural", "zh-CN-YunjianNeural"],
+    "en": {"f": ["en-US-AriaNeural", "en-US-JennyNeural", "en-US-EmmaNeural"],
+           "m": ["en-US-BrianNeural", "en-US-GuyNeural", "en-US-AndrewNeural"]},
+    "es": {"f": ["es-ES-ElviraNeural", "es-MX-DaliaNeural"],
+           "m": ["es-ES-AlvaroNeural", "es-MX-JorgeNeural"]},
+    "pt": {"f": ["pt-BR-FranciscaNeural", "pt-PT-FernandaNeural"],
+           "m": ["pt-BR-AntonioNeural", "pt-PT-DuarteNeural"]},
+    "fr": {"f": ["fr-FR-DeniseNeural", "fr-CA-SylvieNeural"],
+           "m": ["fr-FR-HenriNeural", "fr-CA-AntoineNeural"]},
+    "de": {"f": ["de-DE-KatjaNeural", "de-DE-AmalaNeural"],
+           "m": ["de-DE-ConradNeural", "de-DE-KillianNeural"]},
+    "id": {"f": ["id-ID-GadisNeural"], "m": ["id-ID-ArdiNeural"]},
+    "it": {"f": ["it-IT-ElsaNeural", "it-IT-FabiolaNeural"],
+           "m": ["it-IT-DiegoNeural"]},
+    "zh": {"f": ["zh-CN-XiaoxiaoNeural", "zh-CN-XiaoyiNeural"],
+           "m": ["zh-CN-YunxiNeural", "zh-CN-YunjianNeural"]},
 }
+
+F0_FEMALE_MIN = 170  # Hz: 中位数高于此判女声
 
 
 def parse_args():
-    p = argparse.ArgumentParser(description="说话人 -> 多音色分配 (7语种)")
-    p.add_argument("--speaker-json", required=True, help="pyvideotrans speaker.json 路径")
-    p.add_argument("--params-json", required=True, help="pyvideotrans videotrans/params.json 路径")
-    p.add_argument("--lang", default=None, choices=list(VOICE_POOLS),
-                   help="目标语种自动池 (en/es/pt/fr/de/id/it/zh), 男女交替")
-    p.add_argument("--voices", default=None, help="按说话人顺序音色, 逗号分隔 (优先于 --lang)")
-    p.add_argument("--map", default=None, help="显式映射 '说话人0=音色,...' (最高优先)")
+    p = argparse.ArgumentParser(description="说话人 -> 多音色分配 (7语种, 支持原声性别识别)")
+    p.add_argument("--speaker-json", required=True)
+    p.add_argument("--params-json", required=True)
+    p.add_argument("--lang", default=None, choices=list(VOICE_POOLS))
+    p.add_argument("--vocal", default=None,
+                   help="分离出的原声 vocal.wav 路径; 配合 --lang 按基频自动判性别")
+    p.add_argument("--srt", default=None,
+                   help="源语 srt (行时间轴需与 speaker.json 对齐), --vocal 时必填")
+    p.add_argument("--voices", default=None)
+    p.add_argument("--map", default=None)
     return p.parse_args()
+
+
+def seg_f0(audio, t0, t1):
+    out = subprocess.run(['ffmpeg', '-v', 'quiet', '-ss', str(max(0.0, t0)), '-to', str(t1),
+                          '-i', audio, '-f', 'f32le', '-ac', '1', '-ar', '16000', '-'],
+                         capture_output=True)
+    x = np.frombuffer(out.stdout, dtype=np.float32)
+    if len(x) < 8000:
+        return None
+    x = x[int(0.1 * 16000):int(-0.1 * 16000)]
+    spec = np.abs(np.fft.rfft(x * np.hanning(len(x))))
+    freqs = np.fft.rfftfreq(len(x), 1 / 16000)
+    band = (freqs > 70) & (freqs < 400)
+    if not band.any():
+        return None
+    return float(freqs[band][np.argmax(spec[band])])
+
+
+def speaker_f0(vocal, spk, srt_lines):
+    """每说话人收集其行段的原声基频, 取中位数"""
+    vals = {}
+    for (s, e), who in zip(srt_lines, spk):
+        f0 = seg_f0(vocal, s, e)
+        if f0:
+            vals.setdefault(who, []).append(f0)
+    return {k: float(np.median(v)) for k, v in vals.items() if len(v) >= 1}, vals
+
+
+def parse_srt_times(p):
+    out = []
+    for b in re.split(r'\n\n+', Path(p).read_text(encoding='utf-8').strip()):
+        m = re.search(r'(\d+):(\d+):(\d+),(\d+) --> (\d+):(\d+):(\d+),(\d+)', b)
+        g = [int(v) for v in m.groups()]
+        out.append((g[0]*3600+g[1]*60+g[2]+g[3]/1000, g[4]*3600+g[5]*60+g[6]+g[7]/1000))
+    return out
 
 
 def main():
@@ -50,7 +98,6 @@ def main():
     spk = json.loads(Path(args.speaker_json).read_text(encoding="utf-8"))
     if not spk:
         raise SystemExit("speaker.json 为空")
-
     speakers = sorted(set(spk), key=lambda s: (len(s), s))
     print(f"[voices] 检测到说话人: {speakers}")
 
@@ -63,16 +110,35 @@ def main():
         pool = [v.strip() for v in args.voices.split(",")]
         for i, s in enumerate(speakers):
             mapping[s] = pool[i % len(pool)]
+    elif args.lang and args.vocal:
+        if not args.srt:
+            raise SystemExit("--vocal 需要 --srt 提供行时间轴")
+        lines = parse_srt_times(args.srt)
+        if len(lines) != len(spk):
+            raise SystemExit(f"行数不齐: srt {len(lines)} vs speaker {len(spk)}")
+        med, _ = speaker_f0(args.vocal, spk, lines)
+        pool = VOICE_POOLS[args.lang]
+        fi = mi = 0
+        for s in speakers:
+            f0 = med.get(s)
+            if f0 is None:
+                gender = 'f'
+            else:
+                gender = 'f' if f0 > F0_FEMALE_MIN else 'm'
+            if gender == 'f':
+                mapping[s] = pool['f'][fi % len(pool['f'])]; fi += 1
+            else:
+                mapping[s] = pool['m'][mi % len(pool['m'])]; mi += 1
+            print(f"[voices] {s}: 原声F0中位数={f0 and round(f0,1)}Hz -> {'女' if gender=='f' else '男'} -> {mapping[s]}")
     elif args.lang:
         pool = VOICE_POOLS[args.lang]
+        flat = pool['f'] + pool['m']
         for i, s in enumerate(speakers):
-            mapping[s] = pool[i % len(pool)]
+            mapping[s] = flat[i % len(flat)]
     else:
-        raise SystemExit("需指定 --lang / --voices / --map 之一")
-    print(f"[voices] 说话人->音色: {json.dumps(mapping, ensure_ascii=False)}")
+        raise SystemExit("需指定 --lang [--vocal] / --voices / --map 之一")
 
     line_roles = {str(i + 1): mapping[s] for i, s in enumerate(spk)}
-
     pj = Path(args.params_json)
     params = json.loads(pj.read_text(encoding="utf-8")) if pj.exists() else {}
     params["line_roles"] = line_roles

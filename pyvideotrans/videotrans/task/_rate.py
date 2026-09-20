@@ -160,11 +160,17 @@ def _change_speed_rubberband(input_path, target_duration):
         logger.debug(f"[Audio-RB] {input_path} 原长:{current_duration}ms -> 目标:{target_duration}ms 倍率:{time_stretch_rate:.2f}")
 
         y_stretched = pyrb.time_stretch(y, sr, time_stretch_rate)
-        
-        # 如果是单声道 (ndim=1)，复制为双声道
+
+        # 强制裁剪到目标时长 (与 atempo 路径的 -t 对齐):
+        # rubberband 输出常略超目标 (算法窗口/克隆拖尾), 不裁剪会导致拼接越窗
+        max_samples = int(target_duration / 1000.0 * sr)
+        if max_samples > 0 and len(y_stretched) > max_samples:
+            y_stretched = y_stretched[:max_samples]
+
+        # 如果是单声道 (ndim==1)，复制为双声道
         if y_stretched.ndim == 1:
             y_stretched = np.column_stack((y_stretched, y_stretched))
-        
+
         sf.write(input_path, y_stretched, sr)
         
     except Exception as e:

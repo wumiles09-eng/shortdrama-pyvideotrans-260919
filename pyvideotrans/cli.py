@@ -272,6 +272,10 @@ def vtv_fun(params: dict) -> None:
     print(tr('process_file', params.get('name')))
     try:
         trk = TransCreate(cfg=TaskCfgVTT(**params))
+        # 说话人分离: 上游仅 GUI(only_one) 设 do_diarize, CLI 需自行开启
+        # (否则 --enable_diariz 无效, diariz() 直接 return)
+        if params.get('enable_diariz'):
+            trk.do_diarize = True
         # 短剧多角色配音: params.json 的 line_roles {行号:音色} → app_cfg.line_roles
         from videotrans.configure.config import params as _params
         line_roles = _params.get('line_roles') or {}
