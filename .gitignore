@@ -33,3 +33,5 @@ outputs/*.m4a
 # ===== OS/IDE =====
 .DS_Store
 *.log
+CosyVoice/
+webui.log
