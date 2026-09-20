@@ -394,6 +394,9 @@ def build_parser() -> argparse.ArgumentParser:
                            help="re-embedded background music volume 0.0-1.0 (default 0.8; "
                                 "dubbing is easily drowned when >0.5, recommended 0.3-0.4)")
     vtv_group.add_argument('--is_separate', action='store_true', help=tr("help_is_separate"))
+    vtv_group.add_argument('--source-srt', dest='source_srt', type=str, default=None,
+                           help="import an existing source-language .srt (e.g. OCR-extracted hard "
+                                "subtitles) and skip ASR — keeps per-line timing for short lines")
     vtv_group.add_argument('--recogn2pass', action='store_true', help=tr("help_recogn2pass"))
     vtv_group.add_argument('--subtitle_type', type=int, default=1, help=tr("help_subtitle_type"))
     vtv_group.add_argument('--clear_cache', action='store_true', default=True, help=tr("help_clear_cache"))
@@ -512,6 +515,7 @@ def build_vtv_params(args: argparse.Namespace) -> dict:
         "subtitle_type": args.subtitle_type,
         "clear_cache": args.clear_cache,
         "backaudio_volume": args.backaudio_volume,
+        "source_sub": args.source_srt,
     }
 
 

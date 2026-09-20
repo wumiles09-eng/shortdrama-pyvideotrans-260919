@@ -55,6 +55,8 @@ $NOPROXY HF_ENDPOINT=https://hf-mirror.com uv run --no-sync cli.py --task vtv \
 环节与参数对照 (vtv 内部自动串起):
 1. **字幕识别+提取**: 内置 ASR → srt; 硬字幕剧先用 `drama-ocr-subtitle` 无声提取对照
 2. **角色/音色识别**: `--enable_diariz --nums_diariz N` (N=剧情角色数, 实测约束后 8→5 人与剧情吻合)
+   ⚠️ **源字幕优先用 OCR 硬字幕** (`--source-srt 第01集.ocr.srt`): ASR 断句会吞并短句("老婆/哎呦"类称呼语
+   被合并或丢失→无译文无配音); OCR 原文时间轴精确到句 (实测 42条 vs ASR 16条, 修复后 42/42 全覆盖)
 3. **音色分离**: `--is_separate` → vocal.wav(人声)+instrument.wav(背景乐)
 4. **去原音**: vtv 配音模式天然替换原音轨; `--is_separate` 时背景乐保留、人声被译制配音替换 (embed_bgm 控制)
 5. **字幕翻译**: `--translate_type 7`=GLM / `1`=微软免费 / `9`=本地ollama

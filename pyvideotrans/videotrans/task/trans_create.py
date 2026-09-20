@@ -74,7 +74,14 @@ class TransCreate(
 
         self.cfg.novoice_mp4 = f"{self.cfg.cache_folder}/novoice.mp4"
 
-        self.cfg.source_sub = f"{self.cfg.target_dir}/{self.cfg.source_language_code}.srt"
+        # CLI --source-srt: 先落位到默认路径, 避免被下面默认值覆盖丢失
+        _default_source_sub = f"{self.cfg.target_dir}/{self.cfg.source_language_code}.srt"
+        if self.cfg.source_sub and Path(str(self.cfg.source_sub)).exists() and \
+                Path(str(self.cfg.source_sub)).resolve() != Path(_default_source_sub).resolve():
+            import shutil as _shutil
+            Path(self.cfg.target_dir).mkdir(parents=True, exist_ok=True)
+            _shutil.copy2(str(self.cfg.source_sub), _default_source_sub)
+        self.cfg.source_sub = _default_source_sub
         self.cfg.source_wav_output = f"{self.cfg.target_dir}/{self.cfg.source_language_code}.m4a"
         self.cfg.source_wav = f"{self.cfg.cache_folder}/{self.cfg.source_language_code}.wav"
 

@@ -20,7 +20,9 @@ pyvideotrans/hf-downloads/
 pyvideotrans/output/
 pyvideotrans/_video_out/
 pyvideotrans/tmp/
-outputs/*.mp4
+outputs/**/*.mp4
+outputs/**/*.wav
+outputs/**/*.m4a
 outputs/*.wav
 outputs/*.m4a
 *.ckpt
