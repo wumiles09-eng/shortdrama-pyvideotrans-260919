@@ -390,6 +390,9 @@ def build_parser() -> argparse.ArgumentParser:
     # --- VTV extra ---
     vtv_group = parser.add_argument_group(tr("group_vtv"))
     vtv_group.add_argument('--video_autorate', action='store_true', help=tr("help_video_autorate"))
+    vtv_group.add_argument('--backaudio-volume', type=float, default=0.8, dest='backaudio_volume',
+                           help="re-embedded background music volume 0.0-1.0 (default 0.8; "
+                                "dubbing is easily drowned when >0.5, recommended 0.3-0.4)")
     vtv_group.add_argument('--is_separate', action='store_true', help=tr("help_is_separate"))
     vtv_group.add_argument('--recogn2pass', action='store_true', help=tr("help_recogn2pass"))
     vtv_group.add_argument('--subtitle_type', type=int, default=1, help=tr("help_subtitle_type"))
@@ -508,6 +511,7 @@ def build_vtv_params(args: argparse.Namespace) -> dict:
         "recogn2pass": args.recogn2pass,
         "subtitle_type": args.subtitle_type,
         "clear_cache": args.clear_cache,
+        "backaudio_volume": args.backaudio_volume,
     }
 
 

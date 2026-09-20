@@ -38,11 +38,16 @@ NOPROXY="env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy -u ALL_PR
 
 # ── 一条命令全流程 (以 中→西语 + 音色分离 + 按角色配音 + 硬字幕压制为例) ──
 # 前置: drama-tools/assign_voices.py 已写好目标语种音色的 line_roles
+# ⚠️ 电平/同步三参数 (2026-09-20 实测修复, 缺一会出现"有字幕没配音"听感/音画不同步):
+#    --voice_autorate  配音自动加速塞回字幕时间槽 (否则长句溢出到下一句)
+#    --volume +15%     配音增益
+#    --backaudio-volume 0.35  背景乐降量 (上游默认0.8 会淹没配音; 0.3-0.4 推荐)
 $NOPROXY HF_ENDPOINT=https://hf-mirror.com uv run --no-sync cli.py --task vtv \
   --name 第01集.mp4 --source_language_code zh-cn --target_language_code es \
   --model_name small --enable_diariz --nums_diariz 4 \
   --translate_type 7 \
   --is_separate \
+  --voice_autorate --volume +15% --backaudio-volume 0.35 \
   --voice_role "es-ES-AlvaroNeural" \
   --subtitle_type 1
 ```
@@ -81,9 +86,14 @@ $NOPROXY HF_ENDPOINT=https://hf-mirror.com uv run --no-sync cli.py --task vtv \
 
 ## 验收清单
 
+- [ ] **配音可闻性 (差分法)**: 逐行 mix_rms ≥ (instrument_rms + 20·log10(backaudio_volume) + 5dB);
+      判据基准必须用「BGM×降量系数」—— 用原始 instrument 当基准会把所有行误判缺失
+      (2026-09-20 教训: 18/18 行语音实际都在, 是被 BGM 淹没, 差分基准错导致误诊为"缺段")
+- [ ] **同步**: 每条字幕窗尾后 0.1-0.9s 段 = 纯 BGM (混音-BGM有效电平 差≤4dB);
+      超长句个别溢出 (<1s) 可接受, 连续多句溢出必须开 --voice_autorate 重跑
 - [ ] srt 覆盖>90% 对白时长, 抽 5 条与画面字幕一致
 - [ ] speaker.json 角色数 = 剧情设定; 约束参数已用
 - [ ] vocal/instrument.wav 存在且听感分离
 - [ ] 译制视频: 原音已替换 / 背景乐保留 / 双语或译文硬字幕清晰
 - [ ] 多角色配音: 不同说话人音色可辨 (基频抽检或听感)
-- [ ] 克隆模式: 音色与原声相似度抽听
+- [ ] 克隆模式: 音色与原声相似度抽听; 跑前必须清空 params.json 的 line_roles
