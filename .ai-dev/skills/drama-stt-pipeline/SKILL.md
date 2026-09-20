@@ -16,7 +16,9 @@ description: 海外短剧翻译全流程 (识别→提取→角色/音色识别�
 | 翻译-付费 | GLM glm-5.3-flash (渠道7, coding端点, 7语种全) | — | — |
 | 翻译-免费 | 微软 (渠道1, 7语种全) | 本地 ollama qwen2.5 (渠道9, 见 drama-ollama-local) | — |
 | 配音-多音色 | Edge-TTS (渠道0, 7语种全音色) | — | — |
-| 配音-**音色克隆** | F5-TTS (渠道2) | — | **en/es/fr/de/it/zh 可克隆; id/pt 无克隆模型 → 回退 Edge-TTS** |
+| 配音-**音色克隆** | **CosyVoice2 (渠道14, 本地 webui:8000, 首选)** | F5-TTS(渠道2, 漂移大备用) | en/es/fr/de/it/zh 可克隆; id/pt 无模型→Edge; 行级参考<3s 短句不稳(harness 待修) |
+   CosyVoice 用法: 先起服务 `cd CosyVoice && nohup .venv/bin/python webui.py --port 8000 --model_dir iic/CosyVoice2-0.5B &`
+   再 `--tts_type 14 --voice_role clone` (跑前清 line_roles); 搭建 5 坑详见 verification「P1 模型升级落地」|
 
 ### Edge-TTS 各语色对 (按角色男女交替)
 

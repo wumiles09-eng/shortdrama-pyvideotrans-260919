@@ -196,3 +196,24 @@ G1 状态更新: **翻译链路已解除并实测通过; ASR/OCR 仍待标准产
 
 ### 方法论沉淀 (skill 已更新)
 短剧全流程的正确源: **OCR 硬字幕 (原文+原时间轴) --source-srt 导入** > ASR (断句不可控)
+
+## P1 模型升级落地: CosyVoice2 克隆 (2026-09-20)
+
+### 搭建记录 (CosyVoice2-0.5B 本地服务, 修 5 个坑)
+1. venv 依赖: 剔 deepspeed/vllm/linux-cuda 索引; **openai-whisper 需装(webui frontend import whisper)**
+2. **matcha-tts 必装**(flow_matching 依赖), 但会连带降级 gradio → 装后强制恢复 gradio==5.4.0
+3. matcha 需 pkg_resources → setuptools<81
+4. **torchaudio 2.11 破坏性变更**: info() 被移除(patch webui.py 用 soundfile), load() 需 torchcodec 且二进制与 torch 不配 → **根治: torch/torchaudio/torchvision 降 2.6.0/2.6.0/0.21.0 稳配组合**
+5. gradio_client 兼容: webui.py 的 gr.Audio streaming=True → False (pyvideotrans 官方指引)
+- 启动: `CosyVoice/.venv/bin/python webui.py --port 8000 --model_dir iic/CosyVoice2-0.5B` (ModelScope 自动拉模型)
+- pyvideotrans: params.json cosyvoice_url=http://127.0.0.1:8000, tts_type=14, voice_role=clone
+
+### 验收 (outputs/cosy_ep1_full)
+| 指标 | CosyVoice2 | F5-TTS(旧) |
+|------|-----------|-----------|
+| 字幕对齐 | 42行 0.00s 偏差 | 同 |
+| 可闻 | **42/42** | 38/42 |
+| 错位 | **0** | 9 行 |
+| 克隆贴合 | **4/5 抽样性别一致**, 基频贴合 260/340,316/329,250/276 | 漂移严重 (克隆音高+384 vs 261) |
+
+已知限制: 行级参考切分(_create_ref_from_vocal)在 <3s 短句行上参考质量不稳定 → 个别行音色偏移 (line21 例, harness 层待修项, 非模型问题)。
