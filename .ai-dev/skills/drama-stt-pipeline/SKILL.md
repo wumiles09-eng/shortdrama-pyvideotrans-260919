@@ -12,7 +12,7 @@ description: 海外短剧翻译全流程 (识别→提取→角色/音色识别�
 
 | 环节 | 首选(已实测) | 免费回退 | 克隆方案 |
 |------|-------------|---------|---------|
-| ASR 识别 | faster-whisper small (本地) | FunASR(纯中文更优) | — |
+| ASR 识别 | **FunASR paraformer-zh (渠道3, 四方对比最优)** | FireRed(渠道5)/whisper(兜底) | — |
 | 翻译-付费 | GLM glm-5.3-flash (渠道7, coding端点, 7语种全) | — | — |
 | 翻译-免费 | 微软 (渠道1, 7语种全) | 本地 ollama qwen2.5 (渠道9, 见 drama-ollama-local) | — |
 | 配音-多音色 | Edge-TTS (渠道0, 7语种全音色) | — | — |

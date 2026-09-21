@@ -66,7 +66,7 @@ $NOPROXY HF_ENDPOINT=https://hf-mirror.com uv run --no-sync cli.py --task vtv \
 | 环节 | 免费/开源 (已验证) | 付费 (已接入, 待充值) |
 |------|-------------------|----------------------|
 | 字幕识别 OCR | RapidOCR 本地 (drama-tools) | GLM-OCR `--engine glm` (待标准侧充值) |
-| 语音识别 ASR 档 | **FireRedASR (渠道5, 错字最少)** / SenseVoice(渠道3+SenseVoiceSmall) / faster-whisper | GLM-ASR (渠道16, 待充值) |
+| 语音识别 ASR 档 | **FunASR paraformer-zh (渠道3, 四方对比最优 15/15)**; FireRed(渠道5)/SenseVoice 备选; whisper 兜底 | GLM-ASR (渠道16, 待充值) |
 | 音色克隆 | **CosyVoice2 (渠道14, 本地webui:8000, 贴合8/9)**; F5(渠道2, 备用) | — |
 | 语音识别 ASR | faster-whisper / FunASR 本地 | 智谱 GLM-ASR-2512 (渠道16, zhipu_key) |
 | 字幕翻译 | Google (渠道0, 本机被反爬) / 微软 (渠道1, 可用) | **智谱 glm-5.3-flash (渠道7) ✅已实测**, 质量优于免费 (coding 端点) |

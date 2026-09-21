@@ -232,3 +232,14 @@ G1 状态更新: **翻译链路已解除并实测通过; ASR/OCR 仍待标准产
 2. outputs/final3_ep1 — Edge 性别识别多音色: 可闻38/42, 字幕0偏差
 3. outputs/fix5_ep1 — OCR源单声版(历史里程碑)
 第02集: outputs/fix2_ep2_es (西语多音色+align)
+
+## ASR 四方正面对比 (2026-09-20, 用户问询触发)
+
+方法: 第01集四方(whisper-small/FireRed/SenseVoice/FunASR-paraformer)同素材, OCR 原文为真值, 15 关键词 + 2-gram 重合率。
+
+| | FunASR | FireRed | SenseVoice | whisper-small |
+|--|--|--|--|--|
+| 关键词命中 | **15/15** | 13/15 | 13/15 | 多错 |
+| 2-gram 重合 | **84.6%** | 79.4% | 76.1% | 68.4% |
+
+**ASR 决策终版**: 有硬字幕→--source-srt OCR 源; 无硬字幕→FunASR 渠道3 paraformer-zh 主力(专名全对/语气词完整/内置标点), FireRed 渠道5 备选。
